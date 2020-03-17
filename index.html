@@ -18,8 +18,16 @@ function toogleColor() {
 
 function myparser(o, data) {
   const lines = data.split(/\r?\n/);
-  const frameNum = parseInt(lines[0],10);
-  const totalParticles = parseInt(lines[1], 10);
+  let frameNum, totalFrames, totalParticles;
+  if (/^framenum (\d+)\/(\d+)/.test(lines[0])) {
+    frameNum = parseInt(RegExp.$1, 10)
+    totalFrames = parseInt(RegExp.$2, 10)
+    o.setTotalFrames(totalFrames)
+  }
+  if (/^frameparticles (\d+)/.test(lines[1])) {
+    totalParticles = parseInt(RegExp.$1, 10)
+  }
+
   let particleId, x, y, z, radius, colorIdx1, colorIdx2;
   for (let i=2, l=lines.length; i<l; ++i) {
     [particleId, x, y, z, radius, colorIdx1, colorIdx2] = lines[i].split(" ");

@@ -15,13 +15,13 @@ else {
 }
 open my $fh, "< $Bin/FrameFile.txt" or die;
 
-my $line = <$fh>;
-chomp $line;
-die "expected line: Frame Data File\n" if $line ne 'Frame Data File';
+my $headerline = <$fh>;
+chomp $headerline;
+die "expected line: Frame Data File\n" if $headerline ne 'Frame Data File';
 
-my $line = <$fh>;
-chomp $line;
-die "expected > 0 - got: $line" unless $line > 0;
+my $totalframes = <$fh>;
+chomp $totalframes;
+die "expected totalframes > 0 - got: $totalframes" unless $totalframes > 0;
 
 my $lastFrameNum = 0;
 my $lastTotalParticles=0;
@@ -46,7 +46,7 @@ while (<$fh>) {
 
     close $outfh if $outfh;
     open $outfh, "> data/$frameNum.txt" or die "could not write data/$frameNum.txt"; 
-    print $outfh "$frameNum\n$totalParticles";
+    print $outfh "framenum $frameNum/$totalframes\nframeparticles $totalParticles";
     $foundParticlesInFrame=0;
   }
 
