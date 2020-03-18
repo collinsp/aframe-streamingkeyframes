@@ -11,28 +11,22 @@ AFRAME.registerComponent('streamingkeyframes', {
   init: function(){
     const sceneEl = this.el.sceneEl
     sceneEl.addEventListener('playPause', evt => {
-      if (this.playState==2) this.play()
-      else this.pause()
+      if (this.playState==2) this.playAnimation()
+      else this.pauseAnimation()
     })
     sceneEl.addEventListener('setPlayTime', evt => {
       const frame = Math.ceil((this.totalFrames || 100) * evt.detail.weight)
       this.loadFrameNum(frame)
     })
-    sceneEl.addEventListener('previousFrame', evt => {
-      console.log('previousFrame')
-    })
-    sceneEl.addEventListener('nextFrame', evt => {
-      console.log('nextFrame')
-    })
+    sceneEl.addEventListener('previousFrame', evt => this.previousFrame())
+    sceneEl.addEventListener('nextFrame', evt => this.nextFrame())
     sceneEl.addEventListener('setPlaySpeed', evt => this.setPlaySpeed(evt.detail.playSpeed))
-    sceneEl.addEventListener('resetView', evt => {
-      this.reset()
-    })
+    sceneEl.addEventListener('resetView', evt => this.reset())
   },
     
   // called on initial load or when streamingkeyframes element changes
   update: function() {
-console.log('update called')
+//console.log('update called')
     if (! this.data.parser) this.data.parser = this.parseSimpleText;
     this.srcTemplate = this.data.src;
     if (this.srcTemplate.indexOf('<framenum>')==-1) {
@@ -50,7 +44,7 @@ console.log('update called')
 
   // restart keyframes
   reset: function() {
-console.log('reset called')
+//console.log('reset called')
     this.playState = 0;  // 0=buffering,playing=1,paused=2
     this.setPlaySpeed(1)
     this.totalFrames = undefined
@@ -62,14 +56,13 @@ console.log('reset called')
     this.frameNumBeingFetched = undefined
     this.frameTime=0         // ms into the current animation frame
     this.fetchPromise=undefined
-    this.fetchAbortController = new AbortController()
     while (this.el.firstChild) this.el.removeChild(this.el.firstChild)
     this.fetchFrame()
   },
 
   // speed: 1-10
   setPlaySpeed: function(speed) {
-console.log('setPlaySpeed ', speed)
+//console.log('setPlaySpeed ', speed)
     this.frameDur = Math.ceil(this.data.frameDur / speed)
   },
 
@@ -87,26 +80,36 @@ console.log('setPlaySpeed ', speed)
   },
 
   loadFrameNum: function(frameNum) {
-console.log('loadFrameNum ', frameNum)
+//console.log('loadFrameNum ', frameNum)
     this.frameNum = frameNum
+    if (this.frameNum < this.data.startFrame) this.frameNum = this.totalFrames
+    else if (this.frameNum > this.totalFrames) this.frameNum = this.data.startFrame
     this.frameTime = 0
   },
 
+  previousFrame: function() {
+    this.pauseAnimation()
+    this.loadFrameNum(this.frameNum - 1)
+  },
+  nextFrame: function() {
+    this.pauseAnimation()
+    this.loadFrameNum(this.frameNum + 1)
+  } ,
+
   setTotalFrames: function(totalFrames) {
-//console.log('setTotalFrames ', totalFrames)
     this.totalFrames = totalFrames
   },
 
   // pause animation
-  pause: function() {
+  pauseAnimation: function() {
     this.playState=2
   },
 
   // play animation
-  play: function() {
+  playAnimation: function() {
     // if we are paused, buffer now, will auto play when buffer is full
     if (this.playState==2) {
-      this.playState=0
+      this.playState=1
     }
   },
 
@@ -126,8 +129,6 @@ console.log('loadFrameNum ', frameNum)
       const currentFrame = this.frameNum + numFramesToAdvance
       const nextFrame = currentFrame + 1
 
-//console.log('frameAdvance: ', frameAdvance, '; tweenWeight: ', tweenWeight, '; numFramesToAdvance: ', numFramesToAdvance, '; currentFrame: ', currentFrame, '; nextFrame: ', nextFrame);
-
       // set if we are at end
       if (nextFrame > this.totalFrames) {
         this.loadFrameNum(this.data.startFrame)
@@ -140,7 +141,6 @@ console.log('loadFrameNum ', frameNum)
       if (frameIdx0==-1 || frameIdx1==-1) {
         this.playState = 0  // buffer mode
         this.frameNum = currentFrame
-        console.log('fetch 1');
         this.fetchFrame()   // fetch until we fill buffer
         return
       }
@@ -179,9 +179,11 @@ console.log('loadFrameNum ', frameNum)
         }
       }
 
+      // update video player bar
+      this.el.sceneEl.dispatchEvent(new CustomEvent('updatePlayTime', { detail: { weight: (currentFrame / this.totalFrames) + ((1/this.totalFrames) * tweenWeight) } }))
+
       this.frameNumDisplayed = this.frameNum = currentFrame
       if (! this.fetchPromise && numFramesToAdvance > 0) {
-//        console.log('fetch 2');
         this.fetchFrame() // used a frame so fetch the next one
       }
     }
@@ -191,7 +193,6 @@ console.log('loadFrameNum ', frameNum)
       if (this.frameNumDisplayed != this.frameNum) {
         const frameIdx = this.getFrameBufferIdx(this.frameNum)
         if (frameIdx == -1) {
-//          console.log('fetch 3');
           this.fetchFrame();
           return 
         }
@@ -203,11 +204,15 @@ console.log('loadFrameNum ', frameNum)
             continue;
           } else {
             e.setAttribute('color', this.colorMap[p.colorIdx[frameIdx]] || 'pink')
-            e.setAttribute('visible', p.lastSeenInFrame[frameIdx] == this.FrameNum)
+            e.setAttribute('visible', p.lastSeenInFrame[frameIdx] == this.frameNum)
             e.object3D.children[0].material.opacity = 1
             e.object3D.position.set(p.x[frameIdx], p.y[frameIdx], p.z[frameIdx])
           }
         }
+
+        // update video player bar
+        this.el.sceneEl.dispatchEvent(new CustomEvent('updatePlayTime', { detail: { weight: this.frameNum/this.totalFrames } }))
+
         this.frameNumDisplayed = this.frameNum
       }
     }
@@ -255,11 +260,12 @@ console.log('loadFrameNum ', frameNum)
     // if are already fetching a frame
     if (this.fetchPromise) {
       // do not interrupt fetch if current frame is being fetched or is already buffered
-      if (this.frameNum == this.frameNumBeingFetched || this.loadedFrames[this.frameNum % this.frameBufferSize] == this.frameNum) return
+      if (this.frameNum == this.frameNumBeingFetched ||
+          this.loadedFrames[this.frameNum % this.frameBufferSize] == this.frameNum) return
 
       // else abort current fetch
-      console.log('aborting fetch frame ', this.frameBeingFetched)
-      this.fetchAbortController.abort()
+      console.log('aborting fetch frame ', this.frameNumBeingFetched)
+      this.fetchPromise.abort()
       this.fetchPromise = this.frameNumBeingFetched = undefined
     }
 
@@ -277,15 +283,16 @@ console.log('loadFrameNum ', frameNum)
 
     // return if buffer is full of loaded frames
     if (fetchFrameNum == undefined) {
-console.log('autoplaying - buffer is full')
+//console.log('autoplaying - buffer is full')
       if (this.playState==0) this.playState=1  // autoplay if we are buffering
       return
     }
 
     const url = this.srcTemplate.replace('<framenum>', fetchFrameNum)
     this.frameNumBeingFetched = fetchFrameNum
-//console.log('fetching frame: ', fetchFrameNum)
-    this.fetchPromise = fetch(url, { signal: this.fetchAbortController.signal }).then(resp => {
+
+    const abortController = new AbortController()
+    this.fetchPromise = fetch(url, { signal: abortController.signal }).then(resp => {
       if (resp.status==200) {
         return resp.text()
       } else if (resp.status==404) {
@@ -317,10 +324,13 @@ console.log('autoplaying - buffer is full')
 
       // if we are buffering, fetch next frame
       if (this.playState==0) {
-//        console.log('fetch 4')
         this.fetchFrame()
       }
+    }).catch(err => {
+      if (err.name == 'AbortError') {} // ignore aborted requests
+      else console.log('could not fetch ', url, '; error: ', err.name)
     })
+    this.fetchPromise.abort = () => abortController.abort()
   }
 
 })
