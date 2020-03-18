@@ -55,7 +55,7 @@ console.log('reset called')
     this.setPlaySpeed(1)
     this.totalFrames = undefined
     this.frameBufferSize=10  // how many keyframes to hold for each particle
-    this.frameBackBufferSize = this.frameBufferSize - 1 // hold onto this many back frames to facilitate faster rewind
+    this.frameBackBufferSize = 2 // hold onto this many back frames to facilitate faster rewind
     this.loadedFrames = new Array(this.frameBufferSize)
     this.frameNum = this.data.startFrame
     this.frameNumDisplayed = undefined
@@ -93,7 +93,7 @@ console.log('loadFrameNum ', frameNum)
   },
 
   setTotalFrames: function(totalFrames) {
-console.log('setTotalFrames ', totalFrames)
+//console.log('setTotalFrames ', totalFrames)
     this.totalFrames = totalFrames
   },
 
@@ -126,6 +126,8 @@ console.log('setTotalFrames ', totalFrames)
       const currentFrame = this.frameNum + numFramesToAdvance
       const nextFrame = currentFrame + 1
 
+//console.log('frameAdvance: ', frameAdvance, '; tweenWeight: ', tweenWeight, '; numFramesToAdvance: ', numFramesToAdvance, '; currentFrame: ', currentFrame, '; nextFrame: ', nextFrame);
+
       // set if we are at end
       if (nextFrame > this.totalFrames) {
         this.loadFrameNum(this.data.startFrame)
@@ -138,6 +140,7 @@ console.log('setTotalFrames ', totalFrames)
       if (frameIdx0==-1 || frameIdx1==-1) {
         this.playState = 0  // buffer mode
         this.frameNum = currentFrame
+        console.log('fetch 1');
         this.fetchFrame()   // fetch until we fill buffer
         return
       }
@@ -160,12 +163,11 @@ console.log('setTotalFrames ', totalFrames)
             e.setAttribute('visible', true)
 
             if (p.lastSeenInFrame[frameIdx0] == currentFrame && p.lastSeenInFrame[frameIdx1] == nextFrame) {
-console.log(e.object3D)
               e.object3D.children[0].material.opacity = 1
             } else if (p.lastSeenInFrame[frameIdx0] == currentFrame) {
-              e.object3D.children[0].material.opacity = tweenWeight // fade out
+              e.object3D.children[0].material.opacity = 1 - tweenWeight // fade out
             } else {
-              e.object3D.children[0].material.opacity = 1 - tweenWeight // fade in
+              e.object3D.children[0].material.opacity = tweenWeight // fade in
             }
           }
   
@@ -178,7 +180,10 @@ console.log(e.object3D)
       }
 
       this.frameNumDisplayed = this.frameNum = currentFrame
-      if (! this.fetchPromise && numFramesToAdvance > 0) this.fetchFrame() // used a frame so fetch the next one
+      if (! this.fetchPromise && numFramesToAdvance > 0) {
+//        console.log('fetch 2');
+        this.fetchFrame() // used a frame so fetch the next one
+      }
     }
 
     // if in pause mode update displayed frame
@@ -186,6 +191,7 @@ console.log(e.object3D)
       if (this.frameNumDisplayed != this.frameNum) {
         const frameIdx = this.getFrameBufferIdx(this.frameNum)
         if (frameIdx == -1) {
+//          console.log('fetch 3');
           this.fetchFrame();
           return 
         }
@@ -278,7 +284,7 @@ console.log('autoplaying - buffer is full')
 
     const url = this.srcTemplate.replace('<framenum>', fetchFrameNum)
     this.frameNumBeingFetched = fetchFrameNum
-console.log('fetching frame: ', fetchFrameNum)
+//console.log('fetching frame: ', fetchFrameNum)
     this.fetchPromise = fetch(url, { signal: this.fetchAbortController.signal }).then(resp => {
       if (resp.status==200) {
         return resp.text()
@@ -310,7 +316,10 @@ console.log('fetching frame: ', fetchFrameNum)
       }
 
       // if we are buffering, fetch next frame
-      if (this.playState==0) this.fetchFrame()
+      if (this.playState==0) {
+//        console.log('fetch 4')
+        this.fetchFrame()
+      }
     })
   }
 
