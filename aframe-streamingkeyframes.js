@@ -5,23 +5,29 @@ AFRAME.registerComponent('streamingkeyframes', {
     startFrame: { default: 1 },
     frameDur: { default: 1000 },      // ms we should play each frame
     colorMap: { default: '#000000,#797979,#ffffff,#860000,#fframeIdx0000,#8c5c00,#ffa800,#827700,#ffframeIdx000,#138600,#18fframeIdx00,#000d72,#0012ff,#7d0070,#fframeIdx00e4' },
+    invalidColorDefault: { default: 'pink' },
     parser:   {}
   },
 
   init: function(){
     const sceneEl = this.el.sceneEl
+
     sceneEl.addEventListener('playPause', evt => {
       if (this.playState==2) this.playAnimation()
       else this.pauseAnimation()
     })
+
     sceneEl.addEventListener('setPlayTime', evt => {
       const frame = Math.ceil((this.totalFrames || 100) * evt.detail.weight)
       this.loadFrameNum(frame)
     })
-    sceneEl.addEventListener('previousFrame', evt => this.previousFrame())
-    sceneEl.addEventListener('nextFrame', evt => this.nextFrame())
-    sceneEl.addEventListener('setPlaySpeed', evt => this.setPlaySpeed(evt.detail.playSpeed))
-    sceneEl.addEventListener('resetView', evt => this.reset())
+    sceneEl.addEventListener('nextFrame',         _=> this.nextFrame())
+    sceneEl.addEventListener('previousFrame',     _=> this.previousFrame())
+    sceneEl.addEventListener('increasePlaySpeed', _=> this.setPlaySpeed(this.playSpeed + 1))
+    sceneEl.addEventListener('decreasePlaySpeed', _=> this.setPlaySpeed(this.playSpeed - 1))
+    sceneEl.addEventListener('nextStyle',         _=> this.setColorset(this.colorsetIdx + 1))
+    sceneEl.addEventListener('prevStyle',         _=> this.setColorset(this.colorsetIdx - 1))
+    sceneEl.addEventListener('resetView',         _=> this.reset())
   },
     
   // called on initial load or when streamingkeyframes element changes
@@ -46,7 +52,9 @@ AFRAME.registerComponent('streamingkeyframes', {
   reset: function() {
 //console.log('reset called')
     this.playState = 0;  // 0=buffering,playing=1,paused=2
-    this.setPlaySpeed(1)
+    this.totalColorsets = 0 
+    this.colorsetIdx = 0
+    this.setPlaySpeed(5)
     this.totalFrames = undefined
     this.frameBufferSize=10  // how many keyframes to hold for each particle
     this.frameBackBufferSize = 2 // hold onto this many back frames to facilitate faster rewind
@@ -60,19 +68,30 @@ AFRAME.registerComponent('streamingkeyframes', {
     this.fetchFrame()
   },
 
+  // idx is >=0 AND < this.totalColorsets
+  setColorset: function(idx) {
+    // wrap around idx
+    if (idx < 0) idx=this.totalStyles - 1
+    if (idx >= this.totalColorsets) idx=0
+    this.colorsetIdx = idx
+  },
+
   // speed: 1-10
   setPlaySpeed: function(speed) {
-//console.log('setPlaySpeed ', speed)
+    if (speed > 10) speed = 10
+    else if (speed < 1) speed = 1
+    this.playSpeed = speed
     this.frameDur = Math.ceil(this.data.frameDur / speed)
   },
 
   // default data parser - each line is in format: "<particleId> <x> <y> <z> <radius> <colorIdx>"
   parseSimpleText: function(o, data) {
     let particleId, x, y, z, radius, colorIdx;
+    const shape = 'sphere'
     data.split(/\r?\n/).map( line => {
       [particleId, x, y, z, radius, colorIdx] = line.split(" ");
       if (!(particleId==undefined||x==undefined||y==undefined||z==undefined||radius==undefined||colorIdx==undefined)) {
-        o.plotSphere(particleId, x, y, z, colorIdx, radius);
+        o.plotSphere({ shape, particleId, x, y, z, colorSet:[colorIdx], radius });
       } else {
         //console.log(`could not parse line: ${line}`);
       }
@@ -155,7 +174,8 @@ AFRAME.registerComponent('streamingkeyframes', {
           console.log('WARNING: could not animate '+e.id+' because it is not loaded')
           continue;
         } else {
-          e.setAttribute('color', this.colorMap[p.colorIdx[frameIdx0]] || 'pink')
+          const colorIdx = p.colorSet[frameIdx0][this.colorsetIdx]
+          e.setAttribute('color', this.colorMap[colorIdx] || this.data.invalidColorDefault)
 
           if (p.lastSeenInFrame[frameIdx0] != currentFrame && p.lastSeenInFrame[frameIdx1] != nextFrame) {
             e.setAttribute('visible', false)
@@ -203,7 +223,8 @@ AFRAME.registerComponent('streamingkeyframes', {
             console.log('WARNING: could not animate '+e.id+' because it is not loaded')
             continue;
           } else {
-            e.setAttribute('color', this.colorMap[p.colorIdx[frameIdx]] || 'pink')
+            const colorIdx = p.colorSet[frameIdx][this.colorsetIdx]
+            e.setAttribute('color', this.colorMap[colorIdx] || this.data.invalidColorDefault)
             e.setAttribute('visible', p.lastSeenInFrame[frameIdx] == this.frameNum)
             e.object3D.children[0].material.opacity = 1
             e.object3D.position.set(p.x[frameIdx], p.y[frameIdx], p.z[frameIdx])
@@ -218,42 +239,43 @@ AFRAME.registerComponent('streamingkeyframes', {
     }
   },
 
-  plotSphere: function(particleId, x, y, z, colorIdx, radius) {
-    const idname = 'p'+particleId
+  // called by parser to populate keyframe data for the most recent fetched frame
+  plot: function(o) {
+    if (o.particleId == undefined) throw 'missing particleId'
+    if (o.shape == undefined) o.shape = 'sphere'
+    if (o.shape == 'sphere' && o.radius == undefined) o.radius = 1
+    if (o.x == undefined) o.x = 0
+    if (o.y == undefined) o.y = 0
+    if (o.z == undefined) o.z = 0
+    if (o.collisions == undefined) o.collisions=[]
+    if (o.colorSet == undefined) o.colorSet=[0]
+    if (o.colorSet.length > this.totalColorsets) this.totalColorsets = o.colorSet.length
+
+    const idname = 'p'+o.particleId
     let elem = document.getElementById(idname)
     let p; // shortcut for element properties
 
-
     // add new element if not exists
     if (! elem) {
-      elem = document.createElement('a-sphere')
+      elem = document.createElement('a-' + o.shape)
       elem.id = idname
-      elem.setAttribute('position',{x: x, y: y, z: z})
+      elem.setAttribute('position',{ x: o.x, y: o.y, z: o.z})
       elem.setAttribute('visible',false)
-      elem.setAttribute('radius', parseFloat(radius))
-      //elem.setAttribute('color', this.colorMap[colorIdx] || 'pink')
-      //elem.setAttribute('material', 'transparent: true; color: '+this.colorMap[colorIdx] || 'pink')
-
-      elem.setAttribute('color', this.colorMap[colorIdx] || 'pink')
+      elem.setAttribute('radius', parseFloat(o.radius))
+      elem.setAttribute('color', this.colorMap[o.colorSet[0]] || this.data.invalidColorDefault)
       elem.setAttribute('material', 'transparent: true')
       this.el.appendChild(elem)
-      p = elem._StreamingAFrameProps = { lastSeenInFrame:[], x:[], y:[], z:[], radius:[], colorIdx:[] }
+      p = elem._StreamingAFrameProps = { lastSeenInFrame:[], x:[], y:[], z:[], radius:[], colorSet:[] }
     } else {
       p = elem._StreamingAFrameProps
     }
 
     p.lastSeenInFrame[this.frameBufferIdx] = this.frameNumBeingFetched
-    p.x[this.frameBufferIdx] = parseFloat(x)
-    p.y[this.frameBufferIdx] = parseFloat(y)
-    p.z[this.frameBufferIdx] = parseFloat(z)
-    p.radius[this.frameBufferIdx] = parseFloat(radius)
-
-    if (!(colorIdx in this.colorMap)) {
-      console.log(`invalid colorIdx: ${colorIdx} for frame: ${this.frameNumBeingFetched}; particle: ${particleId}`)
-      colorIdx=0
-    }
-
-    p.colorIdx[this.frameBufferIdx] = parseInt(colorIdx, 10)
+    p.x[this.frameBufferIdx] = parseFloat(o.x)
+    p.y[this.frameBufferIdx] = parseFloat(o.y)
+    p.z[this.frameBufferIdx] = parseFloat(o.z)
+    p.colorSet[this.frameBufferIdx] = o.colorSet
+    if (o.radius != undefined) p.radius[this.frameBufferIdx] = parseFloat(o.radius)
   },
 
   fetchFrame: function() {
@@ -330,6 +352,8 @@ AFRAME.registerComponent('streamingkeyframes', {
       if (err.name == 'AbortError') {} // ignore aborted requests
       else console.log('could not fetch ', url, '; error: ', err.name)
     })
+
+    // add abort method to fetch promise
     this.fetchPromise.abort = () => abortController.abort()
   }
 

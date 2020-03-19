@@ -8,14 +8,11 @@
 /* parse simple file in format
 <frameNum>
 <totalParticles>
-sphereId1 x y z colorIdx radius colorIdx1 colorIdx2
-sphereId2 x y z colorIdx radius colorIdx1 colorIdx2
+sphereId1 x y z colorIdx radius colorIdx1 colorIdx2 collideId1
+sphereId2 x y z colorIdx radius colorIdx1 colorIdx2 collideId1 collideId2
+sphereId3 x y z colorIdx radius colorIdx1 colorIdx2 collideId2
 ...
 */
-var colorType = 2;
-function toogleColor() {
-  colorType = (colorType==1) ? 2 : 1;
-}
 
 function myparser(o, data) {
   const lines = data.split(/\r?\n/);
@@ -28,11 +25,9 @@ function myparser(o, data) {
   if (/^frameparticles (\d+)/.test(lines[1])) {
     totalParticles = parseInt(RegExp.$1, 10)
   }
-
-  let particleId, x, y, z, radius, colorIdx1, colorIdx2;
   for (let i=2, l=lines.length; i<l; ++i) {
-    [particleId, x, y, z, radius, colorIdx1, colorIdx2] = lines[i].split(" ");
-    o.plotSphere(particleId, x, y, z, colorType==1 ? colorIdx1 : colorIdx2, radius);
+    const [particleId, x, y, z, radius, color0, color1, ...collisions] = lines[i].split(" ");
+    o.plot({ particleId, shape: 'sphere', x, y, z, radius, colorSet: [color0, color1], collisions })
   }
 }
 </script>
@@ -42,10 +37,10 @@ function myparser(o, data) {
 <a-entity id="rig" movement-controls="fly: true; speed: 5;" position="0 0 0">
   <a-light type="point"></a-light>
   <a-entity camera look-controls position="0 1.6 0">
+    <a-entity playmenu></a-entity>
   </a-entity>
   <a-entity oculus-touch-controls="hand: left"></a-entity>
   <a-entity oculus-touch-controls="hand: right;" laser-controls raycaster="objects: .clickable; far: 25" line="color: #4a1894;"></a-entity>
-  <a-entity playmenu></a-entity>
 </a-entity>
 
 <a-entity scale="100 100 100" streamingkeyframes='src: data/<framenum>.txt; parser: myparser; frameDur: 1000; colorMap: #000000,#797979,#ffffff,#860000,#ff0000,#8c5c00,#ffa800,#827700,#fff000,#138600,#18ff00,#000d72,#0012ff,#7d0070,#ff00e4,#000000'></a-entity>
