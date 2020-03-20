@@ -210,32 +210,30 @@ AFRAME.registerComponent('streamingkeyframes', {
 
     // if in pause mode update displayed frame
     else if (this.playState == 2) {
-      if (this.frameNumDisplayed != this.frameNum) {
-        const frameIdx = this.getFrameBufferIdx(this.frameNum)
-        if (frameIdx == -1) {
-          this.fetchFrame();
-          return 
-        }
-        for (let i=0,l=this.el.children.length; i<l; ++i) {
-          const e = this.el.children[i]
-          const p = e._StreamingAFrameProps
-          if (! e.object3D) {
-            console.log('WARNING: could not animate '+e.id+' because it is not loaded')
-            continue;
-          } else {
-            const colorIdx = p.colorSet[frameIdx][this.colorsetIdx]
-            e.setAttribute('color', this.colorMap[colorIdx] || this.data.invalidColorDefault)
-            e.setAttribute('visible', p.lastSeenInFrame[frameIdx] == this.frameNum)
-            e.object3D.children[0].material.opacity = 1
-            e.object3D.position.set(p.x[frameIdx], p.y[frameIdx], p.z[frameIdx])
-          }
-        }
-
-        // update video player bar
-        this.el.sceneEl.dispatchEvent(new CustomEvent('updatePlayTime', { detail: { weight: this.frameNum/this.totalFrames } }))
-
-        this.frameNumDisplayed = this.frameNum
+      const frameIdx = this.getFrameBufferIdx(this.frameNum)
+      if (frameIdx == -1) {
+        this.fetchFrame();
+        return 
       }
+      for (let i=0,l=this.el.children.length; i<l; ++i) {
+        const e = this.el.children[i]
+        const p = e._StreamingAFrameProps
+        if (! e.object3D) {
+          console.log('WARNING: could not animate '+e.id+' because it is not loaded')
+          continue;
+        } else {
+          const colorIdx = p.colorSet[frameIdx][this.colorsetIdx]
+          e.setAttribute('color', this.colorMap[colorIdx] || this.data.invalidColorDefault)
+          e.setAttribute('visible', p.lastSeenInFrame[frameIdx] == this.frameNum)
+          e.object3D.children[0].material.opacity = 1
+          e.object3D.position.set(p.x[frameIdx], p.y[frameIdx], p.z[frameIdx])
+        }
+      }
+
+      // update video player bar
+      this.el.sceneEl.dispatchEvent(new CustomEvent('updatePlayTime', { detail: { weight: this.frameNum/this.totalFrames } }))
+
+      this.frameNumDisplayed = this.frameNum
     }
   },
 
