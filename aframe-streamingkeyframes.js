@@ -71,7 +71,7 @@ AFRAME.registerComponent('streamingkeyframes', {
   // idx is >=0 AND < this.totalColorsets
   setColorset: function(idx) {
     // wrap around idx
-    if (idx < 0) idx=this.totalStyles - 1
+    if (idx < 0) idx=this.totalColorsets - 1
     if (idx >= this.totalColorsets) idx=0
     this.colorsetIdx = idx
   },
@@ -284,7 +284,7 @@ AFRAME.registerComponent('streamingkeyframes', {
           this.loadedFrames[this.frameNum % this.frameBufferSize] == this.frameNum) return
 
       // else abort current fetch
-      console.log('aborting fetch frame ', this.frameNumBeingFetched)
+      //console.log('aborting fetch frame ', this.frameNumBeingFetched)
       this.fetchPromise.abort()
       this.fetchPromise = this.frameNumBeingFetched = undefined
     }
