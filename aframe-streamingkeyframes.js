@@ -61,7 +61,6 @@ AFRAME.registerComponent('streamingkeyframes', {
     this.frameBackBufferSize = 2 // hold onto this many back frames to facilitate faster rewind
     this.loadedFrames = new Array(this.frameBufferSize)
     this.frameNum = this.data.startFrame
-    this.frameNumDisplayed = undefined
     this.frameNumBeingFetched = undefined
     this.frameTime=0         // ms into the current animation frame
     this.fetchPromise=undefined
@@ -145,7 +144,7 @@ AFRAME.registerComponent('streamingkeyframes', {
     if (this.playState == 1) {
       const frameAdvance = (this.frameTime + timeDelta) / this.frameDur
       const tweenWeight = frameAdvance % 1 // extract decimal
-      const numFramesToAdvance = ~~frameAdvance // fast Math.floor - get integer part
+      const numFramesToAdvance = ~~frameAdvance // fast Math.floor that forces integer
       const currentFrame = this.frameNum + numFramesToAdvance
       const nextFrame = currentFrame + 1
 
@@ -209,7 +208,7 @@ console.log('fade out for ', e.id, '; frame: ', currentFrame)
       // update video player bar
       this.el.sceneEl.dispatchEvent(new CustomEvent('updatePlayTime', { detail: { weight: (currentFrame / this.totalFrames) + ((1/this.totalFrames) * tweenWeight) } }))
 
-      this.frameNumDisplayed = this.frameNum = currentFrame
+      this.frameNum = currentFrame
       if (! this.fetchPromise && numFramesToAdvance > 0) {
         this.fetchFrame() // used a frame so fetch the next one
       }
@@ -249,8 +248,6 @@ console.log('fade out for ', e.id, '; frame: ', currentFrame)
 
       // update video player bar
       this.el.sceneEl.dispatchEvent(new CustomEvent('updatePlayTime', { detail: { weight: this.frameNum/this.totalFrames } }))
-
-      this.frameNumDisplayed = this.frameNum
     }
   },
 
