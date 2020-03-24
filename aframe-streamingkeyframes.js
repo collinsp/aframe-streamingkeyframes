@@ -5,6 +5,7 @@ AFRAME.registerComponent('streamingkeyframes', {
     startFrame: { default: 1 },
     frameDur: { default: 1000 },      // ms we should play each frame
     colorMap: { default: '#000000,#797979,#ffffff,#860000,#fframeIdx0000,#8c5c00,#ffa800,#827700,#ffframeIdx000,#138600,#18fframeIdx00,#000d72,#0012ff,#7d0070,#fframeIdx00e4' },
+    collisionColor: { default: '#e7298a' },
     invalidColorDefault: { default: 'pink' },
     parser:   {}
   },
@@ -174,18 +175,24 @@ AFRAME.registerComponent('streamingkeyframes', {
           console.log('WARNING: could not animate '+e.id+' because it is not loaded')
           continue;
         } else {
-          const colorIdx = p.colorSet[frameIdx0][this.colorsetIdx]
-          e.setAttribute('color', this.colorMap[colorIdx] || this.data.invalidColorDefault)
-
           if (p.lastSeenInFrame[frameIdx0] != currentFrame && p.lastSeenInFrame[frameIdx1] != nextFrame) {
             e.setAttribute('visible', false)
-          } else {
+          }
+          else {
             e.setAttribute('visible', true)
+
+            if (p.collisions && p.collisions.length > 0) {
+              e.setAttribute('color', this.data.collisionColor || this.data.invalidColorDefault)
+            } else {
+              const colorIdx = p.colorSet[frameIdx0][this.colorsetIdx]
+              e.setAttribute('color', this.colorMap[colorIdx] || this.data.invalidColorDefault)
+            }
 
             if (p.lastSeenInFrame[frameIdx0] == currentFrame && p.lastSeenInFrame[frameIdx1] == nextFrame) {
               e.object3D.children[0].material.opacity = 1
             } else if (p.lastSeenInFrame[frameIdx0] == currentFrame) {
               e.object3D.children[0].material.opacity = 1 - tweenWeight // fade out
+console.log('fade out for ', e.id, '; frame: ', currentFrame)
             } else {
               e.object3D.children[0].material.opacity = tweenWeight // fade in
             }
@@ -222,11 +229,21 @@ AFRAME.registerComponent('streamingkeyframes', {
           console.log('WARNING: could not animate '+e.id+' because it is not loaded')
           continue;
         } else {
-          const colorIdx = p.colorSet[frameIdx][this.colorsetIdx]
-          e.setAttribute('color', this.colorMap[colorIdx] || this.data.invalidColorDefault)
-          e.setAttribute('visible', p.lastSeenInFrame[frameIdx] == this.frameNum)
-          e.object3D.children[0].material.opacity = 1
-          e.object3D.position.set(p.x[frameIdx], p.y[frameIdx], p.z[frameIdx])
+          if (p.lastSeenInFrame[frameIdx] != this.frameNum) {
+            e.setAttribute('visible', false)
+          } else {
+            e.setAttribute('visible', true)
+
+            if (p.collisions && p.collisions.length > 0) {
+              e.setAttribute('color', this.data.collisionColor || this.data.invalidColorDefault)
+            } else {
+              const colorIdx = p.colorSet[frameIdx][this.colorsetIdx]
+              e.setAttribute('color', this.colorMap[colorIdx] || this.data.invalidColorDefault)
+            }
+
+            e.object3D.children[0].material.opacity = 1
+            e.object3D.position.set(p.x[frameIdx], p.y[frameIdx], p.z[frameIdx])
+          }
         }
       }
 
@@ -246,7 +263,18 @@ AFRAME.registerComponent('streamingkeyframes', {
     if (o.y == undefined) o.y = 0
     if (o.z == undefined) o.z = 0
     if (o.collisions == undefined) o.collisions=[]
-    if (o.colorSet == undefined) o.colorSet=[0]
+    else {
+      for (let i=0,l=o.collisions.length;i<l;++i) {
+        o.collisions[i] = parseInt(o.collisions[i], 10)
+      }
+    }
+
+    if (o.colorSet == undefined || o.colorSet.length < 1) o.colorSet=[0]
+    else {
+      for (let i=0,l=o.colorSet.length;i<l;++i) {
+        o.colorSet[i]=parseInt(o.colorSet[i],10) || 0
+      }
+    }
     if (o.colorSet.length > this.totalColorsets) this.totalColorsets = o.colorSet.length
 
     const idname = 'p'+o.particleId
@@ -263,7 +291,7 @@ AFRAME.registerComponent('streamingkeyframes', {
       elem.setAttribute('color', this.colorMap[o.colorSet[0]] || this.data.invalidColorDefault)
       elem.setAttribute('material', 'transparent: true')
       this.el.appendChild(elem)
-      p = elem._StreamingAFrameProps = { lastSeenInFrame:[], x:[], y:[], z:[], radius:[], colorSet:[] }
+      p = elem._StreamingAFrameProps = { lastSeenInFrame:[], x:[], y:[], z:[], radius:[], colorSet:[], collisions: undefined }
     } else {
       p = elem._StreamingAFrameProps
     }
@@ -272,8 +300,9 @@ AFRAME.registerComponent('streamingkeyframes', {
     p.x[this.frameBufferIdx] = parseFloat(o.x)
     p.y[this.frameBufferIdx] = parseFloat(o.y)
     p.z[this.frameBufferIdx] = parseFloat(o.z)
+    p.radius[this.frameBufferIdx] = (o.radius == undefined) ? undefined : parseFloat(o.radius)
     p.colorSet[this.frameBufferIdx] = o.colorSet
-    if (o.radius != undefined) p.radius[this.frameBufferIdx] = parseFloat(o.radius)
+    p.collisions = o.collisions
   },
 
   fetchFrame: function() {
