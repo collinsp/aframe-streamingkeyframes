@@ -25,9 +25,11 @@ function myparser(o, data) {
   if (/^frameparticles (\d+)/.test(lines[1])) {
     totalParticles = parseInt(RegExp.$1, 10)
   }
+  const shape = 'sphere'
   for (let i=2, l=lines.length; i<l; ++i) {
     const [particleId, x, y, z, radius, color0, color1, ...collisions] = lines[i].split(" ");
-    o.plot({ particleId, shape: 'sphere', x, y, z, radius, colorSet: [color0, color1], collisions })
+    const colorSet = [color0, color1]
+    o.plot({ particleId, shape, x, y, z, radius, colorSet, collisions })
   }
 }
 </script>
