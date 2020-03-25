@@ -1,9 +1,9 @@
 <html>
 <head>
 <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.0/dist/aframe-extras.min.js"></script>
 <script src="aframe-streamingkeyframes.js"></script>
 <script src="../aframe-playmenu/aframe-playmenu.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.0/dist/aframe-extras.min.js"></script>
 <script>
 /* parse simple file in format
 <frameNum>
@@ -27,8 +27,8 @@ function myparser(o, data) {
   }
   const shape = 'sphere'
   for (let i=2, l=lines.length; i<l; ++i) {
-    const [particleId, x, y, z, radius, color0, color1, ...collisions] = lines[i].split(" ");
-    const colorSet = [color0, color1]
+    const [particleId, x, y, z, radius, colorSet0Idx, colorSet1Idx, ...collisions] = lines[i].split(" ");
+    const colorSet = [colorSet0Idx, colorSet1Idx]
     o.plot({ particleId, shape, x, y, z, radius, colorSet, collisions })
   }
 }
@@ -45,7 +45,7 @@ function myparser(o, data) {
   <a-entity oculus-touch-controls="hand: right;" laser-controls raycaster="objects: .clickable; far: 25" line="color: #4a1894;"></a-entity>
 </a-entity>
 
-<a-entity scale="100 100 100" streamingkeyframes='src: data/<framenum>.txt; parser: myparser; frameDur: 1000; colorMap: #000000,#797979,#ffffff,#860000,#ff0000,#8c5c00,#ffa800,#827700,#fff000,#138600,#18ff00,#000d72,#0012ff,#7d0070,#ff00e4,#000000'></a-entity>
+<a-entity scale="100 100 100" streamingkeyframes='src: data/<framenum>.txt; parser: myparser; frameDur: 1000; colorSet0: #000000,#860000,#ffffff,#860000; colorSet1: #000000,#797979,#ffffff,#860000,#ff0000,#8c5c00,#ffa800,#827700,#fff000,#138600,#18ff00,#000d72,#0012ff,#7d0070,#ff00e4,#000000'></a-entity>
 </a-scene>
 </body>
 </html>
