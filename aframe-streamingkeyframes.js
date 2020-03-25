@@ -4,7 +4,8 @@ AFRAME.registerComponent('streamingkeyframes', {
     src:      { default: 'frames/<framenum>.txt' },  // directory where frame data exists
     startFrame: { default: 1 },
     frameDur: { default: 1000 },      // ms we should play each frame
-    colorMap: { default: '#000000,#797979,#ffffff,#860000,#fframeIdx0000,#8c5c00,#ffa800,#827700,#ffframeIdx000,#138600,#18fframeIdx00,#000d72,#0012ff,#7d0070,#fframeIdx00e4' },
+    colorSet0: { default: '#000000,#797979,#ffffff,#860000,#fframeIdx0000,#8c5c00,#ffa800,#827700,#ffframeIdx000,#138600,#18fframeIdx00,#000d72,#0012ff,#7d0070,#fframeIdx00e4' },
+    colorSet1: { default: '#797979,#ffffff,#860000,#fframeIdx0000,#8c5c00,#ffa800,#827700,#ffframeIdx000,#138600,#18fframeIdx00,#000d72,#0012ff,#7d0070,#fframeIdx00e4,#000000' },
     collisionColor: { default: '#e7298a' },
     invalidColorDefault: { default: 'pink' },
     parser:   {}
@@ -26,8 +27,8 @@ AFRAME.registerComponent('streamingkeyframes', {
     sceneEl.addEventListener('previousFrame',     _=> this.previousFrame())
     sceneEl.addEventListener('increasePlaySpeed', _=> this.setPlaySpeed(this.playSpeed + 1))
     sceneEl.addEventListener('decreasePlaySpeed', _=> this.setPlaySpeed(this.playSpeed - 1))
-    sceneEl.addEventListener('nextStyle',         _=> this.setColorset(this.colorsetIdx + 1))
-    sceneEl.addEventListener('prevStyle',         _=> this.setColorset(this.colorsetIdx - 1))
+    sceneEl.addEventListener('nextStyle',         _=> this.nextColorSet())
+    sceneEl.addEventListener('prevStyle',         _=> this.prevColorSet())
     sceneEl.addEventListener('resetView',         _=> this.reset())
   },
     
@@ -45,16 +46,42 @@ AFRAME.registerComponent('streamingkeyframes', {
        this.data.parser = window[this.data.parser]; 
     if (typeof this.data.parser !== "function")
       throw 'streamingkeyframes parser is not a function';
-    this.colorMap = this.data.colorMap.split(',');
+
+    // init colorSets
+    this.colorSets = []
+    for (let i=0;i<10;++i) {
+      const name = 'colorSet'+i
+      if (name in this.data) {
+        this.colorSets[i] = this.data[name].split(',');
+      }
+    }
+
     this.reset();
+  },
+
+  nextColorSet: function() {
+    if (this.colorSetIdx == undefined) this.colorSetIdx=-1
+    while (true) {
+      ++this.colorSetIdx
+      if (this.colorSetIdx==10) this.colorSetIdx=0
+      if (this.colorSets[this.colorSetIdx]) break
+    }
+  },
+  prevColorSet: function() {
+    if (this.colorSetIdx == undefined) this.colorSetIdx=10
+    while (true) {
+      --this.colorSetIdx
+      if (this.colorSetIdx==-1) this.colorSetIdx=9
+      if (this.colorSets[this.colorSetIdx]) break
+    }
   },
 
   // restart keyframes
   reset: function() {
 //console.log('reset called')
     this.playState = 0;  // 0=buffering,playing=1,paused=2
-    this.totalColorsets = 0 
-    this.colorsetIdx = 0
+    this.colorSetIdx = undefined
+    this.nextColorSet()
     this.setPlaySpeed(5)
     this.totalFrames = undefined
     this.frameBufferSize=10  // how many keyframes to hold for each particle
@@ -66,14 +93,6 @@ AFRAME.registerComponent('streamingkeyframes', {
     this.fetchPromise=undefined
     while (this.el.firstChild) this.el.removeChild(this.el.firstChild)
     this.fetchFrame()
-  },
-
-  // idx is >=0 AND < this.totalColorsets
-  setColorset: function(idx) {
-    // wrap around idx
-    if (idx < 0) idx=this.totalColorsets - 1
-    if (idx >= this.totalColorsets) idx=0
-    this.colorsetIdx = idx
   },
 
   // speed: 1-10
@@ -91,7 +110,8 @@ AFRAME.registerComponent('streamingkeyframes', {
     data.split(/\r?\n/).map( line => {
       [particleId, x, y, z, radius, colorIdx] = line.split(" ");
       if (!(particleId==undefined||x==undefined||y==undefined||z==undefined||radius==undefined||colorIdx==undefined)) {
-        o.plotSphere({ shape, particleId, x, y, z, colorSet:[colorIdx], radius });
+        const colorSet = [colorIdx]
+        o.plotSphere({ shape, particleId, x, y, z, colorSet, radius });
       } else {
         //console.log(`could not parse line: ${line}`);
       }
@@ -183,8 +203,9 @@ AFRAME.registerComponent('streamingkeyframes', {
             if (p.collisions && p.collisions.length > 0) {
               e.setAttribute('color', this.data.collisionColor || this.data.invalidColorDefault)
             } else {
-              const colorIdx = p.colorSet[frameIdx0][this.colorsetIdx]
-              e.setAttribute('color', this.colorMap[colorIdx] || this.data.invalidColorDefault)
+              const colorIdx = p.colorSet[frameIdx0][this.colorSetIdx]
+              const colorValue = (this.colorSets[this.colorSetIdx] && this.colorSets[this.colorSetIdx][colorIdx]) ? this.colorSets[this.colorSetIdx][colorIdx] : this.data.invalidColorDefault
+              e.setAttribute('color', colorValue)
             }
 
             if (p.lastSeenInFrame[frameIdx0] == currentFrame && p.lastSeenInFrame[frameIdx1] == nextFrame) {
@@ -236,8 +257,9 @@ console.log('fade out for ', e.id, '; frame: ', currentFrame)
             if (p.collisions && p.collisions.length > 0) {
               e.setAttribute('color', this.data.collisionColor || this.data.invalidColorDefault)
             } else {
-              const colorIdx = p.colorSet[frameIdx][this.colorsetIdx]
-              e.setAttribute('color', this.colorMap[colorIdx] || this.data.invalidColorDefault)
+              const colorIdx = p.colorSet[frameIdx][this.colorSetIdx]
+              const colorValue = (this.colorSets[this.colorSetIdx] && this.colorSets[this.colorSetIdx][colorIdx]) ? this.colorSets[this.colorSetIdx][colorIdx] : this.data.invalidColorDefault
+              e.setAttribute('color', colorValue)
             }
 
             e.object3D.children[0].material.opacity = 1
@@ -272,7 +294,6 @@ console.log('fade out for ', e.id, '; frame: ', currentFrame)
         o.colorSet[i]=parseInt(o.colorSet[i],10) || 0
       }
     }
-    if (o.colorSet.length > this.totalColorsets) this.totalColorsets = o.colorSet.length
 
     const idname = 'p'+o.particleId
     let elem = document.getElementById(idname)
@@ -285,7 +306,7 @@ console.log('fade out for ', e.id, '; frame: ', currentFrame)
       elem.setAttribute('position',{ x: o.x, y: o.y, z: o.z})
       elem.setAttribute('visible',false)
       elem.setAttribute('radius', parseFloat(o.radius))
-      elem.setAttribute('color', this.colorMap[o.colorSet[0]] || this.data.invalidColorDefault)
+      elem.setAttribute('color', this.data.invalidColorDefault)
       elem.setAttribute('material', 'transparent: true')
       this.el.appendChild(elem)
       p = elem._StreamingAFrameProps = { lastSeenInFrame:[], x:[], y:[], z:[], radius:[], colorSet:[], collisions: undefined }
@@ -374,7 +395,7 @@ console.log('fade out for ', e.id, '; frame: ', currentFrame)
       }
     }).catch(err => {
       if (err.name == 'AbortError') {} // ignore aborted requests
-      else console.log('could not fetch ', url, '; error: ', err.name)
+      else console.log('could not fetch ', url, '; error: ', err.name, '; exception: ', err)
     })
 
     // add abort method to fetch promise
