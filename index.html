@@ -1,9 +1,9 @@
 <html>
 <head>
 <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.0/dist/aframe-extras.min.js"></script>
 <script src="aframe-streamingkeyframes.js"></script>
 <script src="../aframe-playmenu/aframe-playmenu.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.0/dist/aframe-extras.min.js"></script>
 <script>
 /* parse simple file in format
 <frameNum>
@@ -36,11 +36,10 @@ function myparser(o, data) {
 </head>
 <body>
 <a-scene background="color: #91daff;" fog="type: exponential; color: #91daff; density: 0.001;" renderer="highRefreshRate: true;" cursor="rayOrigin:mouse" raycaster="objects: .clickable;">
+<a-entity playmenu></a-entity>
 <a-entity id="rig" movement-controls="fly: true; speed: 5;" position="0 0 0">
   <a-light type="point"></a-light>
-  <a-entity camera look-controls position="0 1.6 0">
-    <a-entity playmenu></a-entity>
-  </a-entity>
+  <a-entity camera look-controls position="0 1.6 0"></a-entity>
   <a-entity oculus-touch-controls="hand: left"></a-entity>
   <a-entity oculus-touch-controls="hand: right;" laser-controls raycaster="objects: .clickable; far: 25" line="color: #4a1894;"></a-entity>
 </a-entity>
