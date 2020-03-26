@@ -200,7 +200,7 @@ AFRAME.registerComponent('streamingkeyframes', {
           else {
             e.setAttribute('visible', true)
 
-            if (p.collisions && p.collisions.length > 0) {
+            if (p.collisions[frameIdx0] != undefined && p.collisions[frameIdx0].length > 0) {
               e.setAttribute('color', this.data.collisionColor || this.data.invalidColorDefault)
             } else {
               const colorIdx = p.colorSet[frameIdx0][this.colorSetIdx]
@@ -254,7 +254,7 @@ console.log('fade out for ', e.id, '; frame: ', currentFrame)
           } else {
             e.setAttribute('visible', true)
 
-            if (p.collisions && p.collisions.length > 0) {
+            if (p.collisions[frameIdx] != undefined && p.collisions[frameIdx].length > 0) {
               e.setAttribute('color', this.data.collisionColor || this.data.invalidColorDefault)
             } else {
               const colorIdx = p.colorSet[frameIdx][this.colorSetIdx]
@@ -309,7 +309,7 @@ console.log('fade out for ', e.id, '; frame: ', currentFrame)
       elem.setAttribute('color', this.data.invalidColorDefault)
       elem.setAttribute('material', 'transparent: true')
       this.el.appendChild(elem)
-      p = elem._StreamingAFrameProps = { lastSeenInFrame:[], x:[], y:[], z:[], radius:[], colorSet:[], collisions: undefined }
+      p = elem._StreamingAFrameProps = { lastSeenInFrame:[], x:[], y:[], z:[], radius:[], colorSet:[], collisions: [] }
     } else {
       p = elem._StreamingAFrameProps
     }
@@ -320,7 +320,7 @@ console.log('fade out for ', e.id, '; frame: ', currentFrame)
     p.z[this.frameBufferIdx] = parseFloat(o.z)
     p.radius[this.frameBufferIdx] = (o.radius == undefined) ? undefined : parseFloat(o.radius)
     p.colorSet[this.frameBufferIdx] = o.colorSet
-    p.collisions = o.collisions
+    p.collisions[this.frameBufferIdx] = o.collisions
   },
 
   fetchFrame: function() {
