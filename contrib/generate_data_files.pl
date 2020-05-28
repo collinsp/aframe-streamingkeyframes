@@ -4,6 +4,7 @@
 
 use strict;
 use FindBin qw($Bin);
+use Data::Dumper;
 chdir "$Bin/../" or die "could not chdir $Bin/../";
 
 if (-d "data") {
@@ -28,7 +29,11 @@ my $lastTotalParticles=0;
 my $outfh;
 my $foundParticlesInFrame=0;
 
+my %found_collisions; # { <collisionId> => { <frame> => { <particleId> => <line> }, } }
+
+my $lineNo = 0;
 while (<$fh>) {
+  ++$lineNo;
   my $line = $_;
   chomp $line;
 
@@ -51,8 +56,18 @@ while (<$fh>) {
   }
 
   elsif ($line) {
+
+    my ($particleId, $x, $y, $z, $radius, $color1, $color2, @collisions) = split /\ /, $line;
+
+    foreach my $collisionId (@collisions) {
+      $found_collisions{$lastFrameNum}{$collisionId}{$particleId} = [$x,$y,$z, $lineNo];
+    }
+
     $foundParticlesInFrame++;
     print $outfh "\n".$line;
   }
 }
 
+
+print "Found Collisions\n";
+print Dumper(\%found_collisions);

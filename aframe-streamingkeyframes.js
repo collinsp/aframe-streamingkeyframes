@@ -200,7 +200,7 @@ AFRAME.registerComponent('streamingkeyframes', {
           else {
             e.setAttribute('visible', true)
 
-            if (p.collisions[frameIdx0] != undefined && p.collisions[frameIdx0].length > 0) {
+            if (p.collisions[frameIdx0].length > 0 || p.collisions[frameIdx1].length > 0) {
               e.setAttribute('color', this.data.collisionColor || this.data.invalidColorDefault)
             } else {
               const colorIdx = p.colorSet[frameIdx0][this.colorSetIdx]
@@ -254,7 +254,7 @@ console.log('fade out for ', e.id, '; frame: ', currentFrame)
           } else {
             e.setAttribute('visible', true)
 
-            if (p.collisions[frameIdx] != undefined && p.collisions[frameIdx].length > 0) {
+            if (p.collisions[frameIdx].length > 0) {
               e.setAttribute('color', this.data.collisionColor || this.data.invalidColorDefault)
             } else {
               const colorIdx = p.colorSet[frameIdx][this.colorSetIdx]

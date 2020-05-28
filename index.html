@@ -32,10 +32,15 @@ function myparser(o, data) {
     o.plot({ particleId, shape, x, y, z, radius, colorSet, collisions })
   }
 }
+
+function getPlayMenuDialogHTML() {
+  return "<div style='margin:1em;'><h1>My Super Animation Example</h1> Describe the animation. Describe the author, contacts.</div>"
+}
+
 </script>
 </head>
 <body>
-<a-scene background="color: #91daff;" fog="type: exponential; color: #91daff; density: 0.001;" renderer="highRefreshRate: true;" cursor="rayOrigin:mouse" raycaster="objects: .clickable;">
+<a-scene background="color: #91daff;" fog="type: exponential; color: #91daff; density: 0.001;" renderer="highRefreshRate: true;">
 <a-entity playmenu></a-entity>
 <a-entity id="rig" movement-controls="fly: true; speed: 5;" position="0 0 0">
   <a-light type="point"></a-light>
